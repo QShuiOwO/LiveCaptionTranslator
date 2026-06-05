@@ -1,27 +1,59 @@
-# Visual Studio
+# LiveCaptionTranslator .gitignore
+
+# Visual Studio / Rider
 .vs/
-
-# Build output
-bin/
-obj/
-[Bb]in/
-[Oo]bj/
-
-# User-specific files
-*.user
+.idea/
 *.suo
+*.user
 *.userosscache
 *.sln.docstates
+*.rsuser
 
-# Logs and local diagnostics
-logs/
-*.log
-
-# .NET
+# .NET / WPF build output
+[Bb]in/
+[Oo]bj/
+publish/
+artifacts/
 TestResults/
 *.nupkg
 *.snupkg
+*.pdb
 
-# Windows
+# Runtime logs and local diagnostics
+logs/
+**/logs/
+*.log
+*.dmp
+
+# Python cache / virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Local NLLB / model files
+# Keep tools/nllb/translate_worker.py tracked, but do not commit downloaded models.
+tools/nllb/models/
+tools/nllb/checkpoints/
+tools/nllb/cache/
+tools/nllb/*.bin
+tools/nllb/*.pt
+tools/nllb/*.pth
+tools/nllb/*.safetensors
+tools/nllb/*.onnx
+tools/nllb/*.spm
+
+# Local config and secrets
+appsettings.Development.json
+appsettings.Local.json
+*.local.json
+*.secret.json
+
+# OS files
 Thumbs.db
 Desktop.ini
+$RECYCLE.BIN/
