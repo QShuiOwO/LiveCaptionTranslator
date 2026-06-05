@@ -135,6 +135,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            await _translationQueue.StopAsync();
             _viewModel.TranslationStatus = "翻译 worker 启动失败";
             _viewModel.AddLog($"翻译 worker 启动失败：{ex.Message}");
         }
@@ -215,6 +216,7 @@ public partial class MainWindow : Window
         Dispatcher.InvokeAsync(() =>
         {
             _viewModel.AddTranslationResult(result);
+            ScrollListBoxToEnd(TranslationResultsListBox);
             if (string.Equals(result.Status, "Completed", StringComparison.OrdinalIgnoreCase))
             {
                 _viewModel.AddLog($"翻译完成：{result.TranslatedText}");
@@ -260,6 +262,7 @@ public partial class MainWindow : Window
         }
 
         _viewModel.AddSubmittedSegments(result.SubmittedSegments);
+        ScrollListBoxToEnd(SubmittedSegmentsListBox);
         foreach (var segment in result.SubmittedSegments)
         {
             _viewModel.AddLog($"提交字幕片段：{segment.Text}");
@@ -268,5 +271,15 @@ public partial class MainWindow : Window
                 _viewModel.SelectedSourceLanguage,
                 _viewModel.SelectedTargetLanguage);
         }
+    }
+
+    private static void ScrollListBoxToEnd(ListBox listBox)
+    {
+        if (listBox.Items.Count == 0)
+        {
+            return;
+        }
+
+        listBox.ScrollIntoView(listBox.Items[listBox.Items.Count - 1]);
     }
 }

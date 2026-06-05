@@ -11,6 +11,9 @@ namespace LiveCaptionTranslator.App.Services.Translation;
 public sealed class PythonTranslationWorker : ITranslationService, IDisposable
 {
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+    private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(120);
+    private const string PythonPathEnvironmentVariable = "LCT_NLLB_PYTHON";
+    private const string PreferredCondaPythonPath = @"D:\miniconda3\envs\local-translator-nllb\python.exe";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -22,6 +25,7 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
     private readonly ConcurrentDictionary<string, PendingRequest> _pendingRequests = new(StringComparer.Ordinal);
     private Process? _process;
     private CancellationTokenSource? _processCancellationTokenSource;
+    private TaskCompletionSource<WorkerReadyResult>? _readyCompletionSource;
     private Task? _stdoutTask;
     private Task? _stderrTask;
     private bool _isStopping;
@@ -58,7 +62,15 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
 
                 try
                 {
-                    StartProcess(candidate.FileName, candidate.Arguments);
+                    PublishStatus("正在加载翻译 worker");
+                    StartProcess(candidate.FileName, candidate.Arguments, candidate.WorkingDirectory);
+                    var readyResult = await WaitForReadyAsync(cancellationToken).ConfigureAwait(false);
+                    if (!readyResult.Success)
+                    {
+                        await StopProcessAsync(CancellationToken.None).ConfigureAwait(false);
+                        throw new InvalidOperationException(readyResult.Error ?? "worker 初始化失败。");
+                    }
+
                     PublishStatus("翻译 worker 运行中");
                     PublishLog($"翻译 worker 已启动：{Path.GetFileName(scriptPath)}");
                     return;
@@ -163,11 +175,13 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
         _startStopLock.Dispose();
     }
 
-    private void StartProcess(string fileName, string arguments)
+    private void StartProcess(string fileName, string arguments, string workingDirectory)
     {
         _processCancellationTokenSource?.Cancel();
         _processCancellationTokenSource?.Dispose();
         _processCancellationTokenSource = new CancellationTokenSource();
+        _readyCompletionSource = new TaskCompletionSource<WorkerReadyResult>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
 
         var process = new Process
         {
@@ -175,6 +189,7 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
             {
                 FileName = fileName,
                 Arguments = arguments,
+                WorkingDirectory = workingDirectory,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
@@ -197,6 +212,26 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
         _process = process;
         _stdoutTask = Task.Run(() => ReadStdoutLoopAsync(process, _processCancellationTokenSource.Token));
         _stderrTask = Task.Run(() => ReadStderrLoopAsync(process, _processCancellationTokenSource.Token));
+    }
+
+    private async Task<WorkerReadyResult> WaitForReadyAsync(CancellationToken cancellationToken)
+    {
+        var readyCompletionSource = _readyCompletionSource
+            ?? throw new InvalidOperationException("worker ready state was not initialized.");
+
+        using var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCancellationTokenSource.CancelAfter(ReadyTimeout);
+
+        try
+        {
+            return await readyCompletionSource.Task
+                .WaitAsync(timeoutCancellationTokenSource.Token)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return new WorkerReadyResult(false, "等待 worker ready 超时。");
+        }
     }
 
     private async Task StopProcessAsync(CancellationToken cancellationToken)
@@ -312,9 +347,25 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
             return;
         }
 
-        if (response is null || string.IsNullOrWhiteSpace(response.Id))
+        if (response is null)
         {
-            PublishLog("worker 返回缺少 id。");
+            PublishLog("worker 返回空响应。");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(response.Id))
+        {
+            if (string.Equals(response.Type, "ready", StringComparison.OrdinalIgnoreCase))
+            {
+                _readyCompletionSource?.TrySetResult(new WorkerReadyResult(
+                    response.Success,
+                    response.Error));
+            }
+            else
+            {
+                PublishLog("worker 返回缺少 id。");
+            }
+
             return;
         }
 
@@ -355,6 +406,7 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
 
         _process = null;
         _processCancellationTokenSource?.Cancel();
+        _readyCompletionSource?.TrySetResult(new WorkerReadyResult(false, "翻译 worker 异常退出。"));
         FailPendingRequests("翻译 worker 异常退出。");
         PublishStatus("翻译 worker 异常退出");
         PublishLog("翻译 worker 异常退出。");
@@ -398,11 +450,41 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
         };
     }
 
-    private static IEnumerable<(string FileName, string Arguments)> CreatePythonStartCandidates(string scriptPath)
+    private static IEnumerable<(string FileName, string Arguments, string WorkingDirectory)> CreatePythonStartCandidates(string scriptPath)
     {
         var quotedScript = Quote(scriptPath);
-        yield return ("python", $"-u {quotedScript}");
-        yield return ("py", $"-3 -u {quotedScript}");
+        var nllbDirectory = Path.GetDirectoryName(scriptPath)
+            ?? throw new DirectoryNotFoundException("无法定位 NLLB worker 目录。");
+        var modelPath = Path.Combine(nllbDirectory, "nllb-200-distilled-600M-ct2");
+        var tokenizerPath = Path.Combine(nllbDirectory, "tokenizer");
+
+        if (!Directory.Exists(modelPath))
+        {
+            throw new DirectoryNotFoundException($"未找到 NLLB 模型目录：{modelPath}");
+        }
+
+        if (!Directory.Exists(tokenizerPath))
+        {
+            throw new DirectoryNotFoundException($"未找到 NLLB tokenizer 目录：{tokenizerPath}");
+        }
+
+        var arguments =
+            $"-u {quotedScript} --model {Quote(modelPath)} --tokenizer {Quote(tokenizerPath)} --device cpu --compute-type int8";
+
+        var configuredPythonPath = Environment.GetEnvironmentVariable(PythonPathEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(configuredPythonPath) && File.Exists(configuredPythonPath))
+        {
+            yield return (configuredPythonPath, arguments, nllbDirectory);
+        }
+
+        if (!string.Equals(configuredPythonPath, PreferredCondaPythonPath, StringComparison.OrdinalIgnoreCase) &&
+            File.Exists(PreferredCondaPythonPath))
+        {
+            yield return (PreferredCondaPythonPath, arguments, nllbDirectory);
+        }
+
+        yield return ("python", arguments, nllbDirectory);
+        yield return ("py", $"-3 {arguments}", nllbDirectory);
     }
 
     private static string FindWorkerScriptPath()
@@ -467,10 +549,19 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
 
         [JsonPropertyName("target_lang")]
         public string TargetLang { get; }
+
+        [JsonPropertyName("source_language")]
+        public string SourceLanguage => SourceLang;
+
+        [JsonPropertyName("target_language")]
+        public string TargetLanguage => TargetLang;
     }
 
     private sealed class WorkerResponse
     {
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
+
         [JsonPropertyName("id")]
         public string? Id { get; set; }
 
@@ -483,6 +574,8 @@ public sealed class PythonTranslationWorker : ITranslationService, IDisposable
         [JsonPropertyName("error")]
         public string? Error { get; set; }
     }
+
+    private sealed record WorkerReadyResult(bool Success, string? Error);
 
     private sealed record PendingRequest(
         Guid Id,

@@ -36,7 +36,8 @@ env/
 .env.*
 
 # Local NLLB / model files
-# Keep tools/nllb/translate_worker.py tracked, but do not commit downloaded models.
+# Keep worker code, tokenizer metadata, and small CT2 metadata tracked.
+# Do not commit large model weights; GitHub rejects normal blobs over 100MB.
 tools/nllb/models/
 tools/nllb/checkpoints/
 tools/nllb/cache/
@@ -46,6 +47,15 @@ tools/nllb/*.pth
 tools/nllb/*.safetensors
 tools/nllb/*.onnx
 tools/nllb/*.spm
+tools/nllb/**/*.bin
+tools/nllb/**/*.pt
+tools/nllb/**/*.pth
+tools/nllb/**/*.safetensors
+tools/nllb/**/*.onnx
+tools/nllb/**/*.spm
+tools/nllb/**/.cache/
+!tools/nllb/**/.gitkeep
+!tools/nllb/**/*.json
 
 # Local config and secrets
 appsettings.Development.json

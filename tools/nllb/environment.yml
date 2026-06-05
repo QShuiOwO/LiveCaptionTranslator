@@ -1,0 +1,14 @@
+name: local-translator-nllb
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - ctranslate2==4.7.2
+      - transformers==5.9.0
+      - tokenizers==0.22.2
+      - sentencepiece==0.2.1
+      - safetensors==0.7.0
+      - huggingface-hub==1.16.1
+      - numpy==2.4.6

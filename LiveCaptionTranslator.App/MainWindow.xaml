@@ -128,7 +128,8 @@
             <GroupBox Grid.Column="0"
                       Header="已提交片段"
                       Padding="12">
-                <ListBox ItemsSource="{Binding SubmittedSegments}"
+                <ListBox x:Name="SubmittedSegmentsListBox"
+                         ItemsSource="{Binding SubmittedSegments}"
                          BorderThickness="0"
                          Background="White"
                          ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -153,7 +154,8 @@
             <GroupBox Grid.Column="2"
                       Header="翻译结果"
                       Padding="12">
-                <ListBox ItemsSource="{Binding TranslationResults}"
+                <ListBox x:Name="TranslationResultsListBox"
+                         ItemsSource="{Binding TranslationResults}"
                          BorderThickness="0"
                          Background="White"
                          ScrollViewer.VerticalScrollBarVisibility="Auto">
