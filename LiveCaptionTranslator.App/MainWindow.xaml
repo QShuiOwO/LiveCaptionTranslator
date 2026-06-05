@@ -1,0 +1,83 @@
+<Window x:Class="LiveCaptionTranslator.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LiveCaptionTranslator"
+        Width="960"
+        Height="720"
+        MinWidth="760"
+        MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        Background="#F6F7F9">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="180" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="LiveCaptionTranslator"
+                       FontSize="24"
+                       FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,12,0,0">
+                <TextBlock Text="Live captions 状态："
+                           FontWeight="SemiBold" />
+                <TextBlock Text="{Binding LiveCaptionsStatus}" />
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
+                    Margin="0,20,0,16">
+            <Button Content="启动 Live captions"
+                    MinWidth="140"
+                    Padding="12,8"
+                    Margin="0,0,12,0"
+                    Click="StartLiveCaptionsButton_Click" />
+            <Button Content="开始读取"
+                    MinWidth="110"
+                    Padding="12,8"
+                    Margin="0,0,12,0"
+                    Click="StartReadingButton_Click" />
+            <Button Content="停止读取"
+                    MinWidth="110"
+                    Padding="12,8"
+                    Margin="0,0,12,0"
+                    Click="StopReadingButton_Click" />
+            <Button Content="导出 UIA 树"
+                    MinWidth="120"
+                    Padding="12,8"
+                    Click="DumpUiaTreeButton_Click" />
+        </StackPanel>
+
+        <GroupBox Grid.Row="2"
+                  Header="原文字幕"
+                  Padding="12">
+            <TextBox Text="{Binding OriginalSubtitleText}"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"
+                     BorderThickness="0"
+                     Background="White"
+                     FontSize="16" />
+        </GroupBox>
+
+        <GroupBox Grid.Row="3"
+                  Header="日志"
+                  Padding="12"
+                  Margin="0,16,0,0">
+            <TextBox x:Name="LogTextBox"
+                     Text="{Binding LogText, Mode=OneWay}"
+                     IsReadOnly="True"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"
+                     BorderThickness="0"
+                     Background="White"
+                     TextChanged="LogTextBox_TextChanged" />
+        </GroupBox>
+    </Grid>
+</Window>

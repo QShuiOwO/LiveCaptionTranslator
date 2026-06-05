@@ -1,0 +1,27 @@
+# Visual Studio
+.vs/
+
+# Build output
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs and local diagnostics
+logs/
+*.log
+
+# .NET
+TestResults/
+*.nupkg
+*.snupkg
+
+# Windows
+Thumbs.db
+Desktop.ini
