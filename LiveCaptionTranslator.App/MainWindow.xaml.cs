@@ -215,11 +215,13 @@ public partial class MainWindow : Window
     {
         Dispatcher.InvokeAsync(() =>
         {
-            _viewModel.AddTranslationResult(result);
+            var replacedExisting = _viewModel.UpsertTranslationResult(result);
             ScrollListBoxToEnd(TranslationResultsListBox);
             if (string.Equals(result.Status, "Completed", StringComparison.OrdinalIgnoreCase))
             {
-                _viewModel.AddLog($"翻译完成：{result.TranslatedText}");
+                _viewModel.AddLog(replacedExisting
+                    ? $"翻译完成并替换旧结果：{result.TranslatedText}"
+                    : $"翻译完成：{result.TranslatedText}");
             }
             else
             {
@@ -256,12 +258,37 @@ public partial class MainWindow : Window
             ? "等待稳定字幕片段。"
             : result.BufferText;
 
+        foreach (var logEntry in result.LogEntries)
+        {
+            _viewModel.AddLog(logEntry);
+        }
+
+        foreach (var replacedSegment in result.ReplacedSegments)
+        {
+            var replacementText = result.SubmittedSegments
+                .FirstOrDefault(segment =>
+                    SubtitleDeduplicator.AreSameUtterance(replacedSegment.Text, segment.Text) &&
+                    SubtitleDeduplicator.IsMoreCompleteUtterance(segment.Text, replacedSegment.Text))
+                ?.Text ?? result.BufferText;
+
+            _translationQueue.Supersede(
+                replacedSegment,
+                replacementText,
+                _viewModel.SelectedSourceLanguage,
+                _viewModel.SelectedTargetLanguage);
+        }
+
         if (result.SubmittedSegments.Count == 0)
         {
+            if (result.ReplacedSegments.Count > 0)
+            {
+                _viewModel.ApplySubmittedSegments([], result.ReplacedSegments);
+            }
+
             return;
         }
 
-        _viewModel.AddSubmittedSegments(result.SubmittedSegments);
+        _viewModel.ApplySubmittedSegments(result.SubmittedSegments, result.ReplacedSegments);
         ScrollListBoxToEnd(SubmittedSegmentsListBox);
         foreach (var segment in result.SubmittedSegments)
         {

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using LiveCaptionTranslator.App.Models;
+using LiveCaptionTranslator.App.Services.Subtitle;
 
 namespace LiveCaptionTranslator.App.ViewModels;
 
@@ -78,9 +79,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref _logText, value);
     }
 
-    public void AddSubmittedSegments(IEnumerable<CaptionSegment> segments)
+    public void ApplySubmittedSegments(
+        IEnumerable<CaptionSegment> submittedSegments,
+        IEnumerable<CaptionSegment> replacedSegments)
     {
-        foreach (var segment in segments)
+        foreach (var replacedSegment in replacedSegments)
+        {
+            var existing = SubmittedSegments.FirstOrDefault(segment => segment.Id == replacedSegment.Id);
+            if (existing is not null)
+            {
+                SubmittedSegments.Remove(existing);
+            }
+        }
+
+        foreach (var segment in submittedSegments)
         {
             SubmittedSegments.Add(segment);
         }
@@ -91,9 +103,28 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SubmittedSegments.Clear();
     }
 
-    public void AddTranslationResult(TranslationResult result)
+    public bool UpsertTranslationResult(TranslationResult result)
     {
+        var existing = TranslationResults.FirstOrDefault(item =>
+            SubtitleDeduplicator.AreSameUtterance(item.SourceText, result.SourceText) &&
+            SubtitleDeduplicator.IsMoreCompleteUtterance(result.SourceText, item.SourceText));
+
+        if (existing is not null)
+        {
+            var index = TranslationResults.IndexOf(existing);
+            TranslationResults[index] = result;
+            return true;
+        }
+
+        if (TranslationResults.Any(item =>
+                string.Equals(item.SourceText, result.SourceText, StringComparison.Ordinal) &&
+                string.Equals(item.TargetLanguage, result.TargetLanguage, StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
         TranslationResults.Add(result);
+        return false;
     }
 
     public void ClearTranslationResults()

@@ -8,34 +8,63 @@ public static class SubtitleDeduplicatorDebugScenarios
     public static string RunAll()
     {
         var builder = new StringBuilder();
-        RunScenario(builder, "英文增量字幕", [
-            "I think",
-            "I think this",
-            "I think this is",
-            "I think this is useful"
-        ], advanceAfterLastMs: 900);
 
-        RunScenario(builder, "中文字幕", [
-            "我觉得",
-            "我觉得这个",
-            "我觉得这个很有用。"
-        ]);
+        RunScenario(
+            builder,
+            "测试 1：英文修正扩展",
+            [
+                "If I make flour with it this",
+                "If I make flour with it, this will give us the next.",
+                "If I make flour with it, this will give us the next advancement you can see."
+            ],
+            ["If I make flour with it, this will give us the next advancement you can see."]);
 
-        RunScenario(builder, "日文字幕", [
-            "これは",
-            "これは便利",
-            "これは便利です。"
-        ]);
+        RunScenario(
+            builder,
+            "测试 2：英文增量字幕",
+            [
+                "I think",
+                "I think this",
+                "I think this is",
+                "I think this is useful."
+            ],
+            ["I think this is useful."]);
 
-        RunScenario(builder, "重复文本", [
-            "hello world.",
-            "hello world.",
-            "hello world."
-        ]);
+        RunScenario(
+            builder,
+            "测试 3：日文字幕",
+            [
+                "これは",
+                "これはテスト",
+                "これはテストです。"
+            ],
+            ["これはテストです。"]);
 
-        RunScenario(builder, "长文本", [
-            new string('a', 520)
-        ]);
+        RunScenario(
+            builder,
+            "测试 4：中文字幕",
+            [
+                "你好",
+                "你好这是",
+                "你好这是一个测试。"
+            ],
+            ["你好这是一个测试。"]);
+
+        RunScenario(
+            builder,
+            "测试 5：新句独立提交",
+            [
+                "If I make flour with it, this will give us the next advancement.",
+                "Alright with what we have."
+            ],
+            [
+                "If I make flour with it, this will give us the next advancement.",
+                "Alright with what we have."
+            ],
+            tickBetweenInputs: true);
+
+        RunReplacementScenario(builder);
+        RunTranscriptWindowScenario(builder);
 
         return builder.ToString().TrimEnd();
     }
@@ -44,28 +73,103 @@ public static class SubtitleDeduplicatorDebugScenarios
         StringBuilder builder,
         string name,
         IReadOnlyList<string> inputs,
-        int advanceAfterLastMs = 0)
+        IReadOnlyList<string> expected,
+        bool tickBetweenInputs = false)
     {
         var deduplicator = new SubtitleDeduplicator();
         var now = DateTimeOffset.Parse("2026-01-01T00:00:00+00:00");
-        var submitted = new List<CaptionSegment>();
+        var finalSegments = new List<CaptionSegment>();
 
         foreach (var input in inputs)
         {
-            submitted.AddRange(deduplicator.Push(input, "Debug", now).SubmittedSegments);
-            now = now.AddMilliseconds(120);
+            ApplyResult(finalSegments, deduplicator.Push(input, "Debug", now));
+            now = now.AddMilliseconds(400);
+
+            if (tickBetweenInputs)
+            {
+                now = now.AddMilliseconds(2200);
+                ApplyResult(finalSegments, deduplicator.Tick("Debug", now));
+            }
         }
 
-        if (advanceAfterLastMs > 0)
+        if (!tickBetweenInputs)
         {
-            now = now.AddMilliseconds(advanceAfterLastMs);
-            submitted.AddRange(deduplicator.Tick("Debug", now).SubmittedSegments);
+            now = now.AddMilliseconds(2200);
+            ApplyResult(finalSegments, deduplicator.Tick("Debug", now));
         }
 
-        builder.AppendLine($"[{name}] 提交 {submitted.Count} 个片段");
-        foreach (var segment in submitted)
+        var actual = finalSegments.Select(segment => segment.Text).ToList();
+        var passed = actual.SequenceEqual(expected, StringComparer.Ordinal);
+
+        builder.AppendLine($"[{name}] {(passed ? "PASS" : "FAIL")}，提交 {actual.Count} 个片段");
+        builder.AppendLine($"  期望：{string.Join(" | ", expected)}");
+        builder.AppendLine($"  实际：{string.Join(" | ", actual)}");
+    }
+
+    private static void RunReplacementScenario(StringBuilder builder)
+    {
+        var deduplicator = new SubtitleDeduplicator();
+        var now = DateTimeOffset.Parse("2026-01-01T00:00:00+00:00");
+        var finalSegments = new List<CaptionSegment>();
+
+        ApplyResult(finalSegments, deduplicator.Push("If I make flour with it this", "Debug", now));
+        now = now.AddMilliseconds(2200);
+        ApplyResult(finalSegments, deduplicator.Tick("Debug", now));
+
+        now = now.AddMilliseconds(400);
+        ApplyResult(finalSegments, deduplicator.Push("If I make flour with it, this will give us the next.", "Debug", now));
+        now = now.AddMilliseconds(2200);
+        ApplyResult(finalSegments, deduplicator.Tick("Debug", now));
+
+        var expected = new[] { "If I make flour with it, this will give us the next." };
+        var actual = finalSegments.Select(segment => segment.Text).ToList();
+        var passed = actual.SequenceEqual(expected, StringComparer.Ordinal);
+
+        builder.AppendLine($"[额外测试：更完整版本替换旧短句] {(passed ? "PASS" : "FAIL")}，提交 {actual.Count} 个片段");
+        builder.AppendLine($"  期望：{string.Join(" | ", expected)}");
+        builder.AppendLine($"  实际：{string.Join(" | ", actual)}");
+    }
+
+    private static void RunTranscriptWindowScenario(StringBuilder builder)
+    {
+        var deduplicator = new SubtitleDeduplicator();
+        var now = DateTimeOffset.Parse("2026-01-01T00:00:00+00:00");
+        var finalSegments = new List<CaptionSegment>();
+
+        ApplyResult(finalSegments, deduplicator.Push(
+            "Now the question is what is in here?",
+            "Debug",
+            now));
+
+        now = now.AddMilliseconds(400);
+        ApplyResult(finalSegments, deduplicator.Push(
+            "Now the question is what is in here?\nNot a lot of great stuff if I'm being honest.",
+            "Debug",
+            now));
+
+        now = now.AddMilliseconds(2200);
+        ApplyResult(finalSegments, deduplicator.Tick("Debug", now));
+
+        var expected = new[]
         {
-            builder.AppendLine($"  - {segment.Text}");
+            "Now the question is what is in here?",
+            "Not a lot of great stuff if I'm being honest."
+        };
+        var actual = finalSegments.Select(segment => segment.Text).ToList();
+        var passed = actual.SequenceEqual(expected, StringComparer.Ordinal);
+
+        builder.AppendLine($"[额外测试：滚动 transcript 多句拆分] {(passed ? "PASS" : "FAIL")}，提交 {actual.Count} 个片段");
+        builder.AppendLine($"  期望：{string.Join(" | ", expected)}");
+        builder.AppendLine($"  实际：{string.Join(" | ", actual)}");
+    }
+
+    private static void ApplyResult(List<CaptionSegment> finalSegments, SubtitleDeduplicationResult result)
+    {
+        foreach (var replacedSegment in result.ReplacedSegments)
+        {
+            finalSegments.RemoveAll(segment => segment.Id == replacedSegment.Id);
         }
+
+        finalSegments.AddRange(result.SubmittedSegments);
     }
 }

@@ -104,7 +104,7 @@
         </GroupBox>
 
         <GroupBox Grid.Row="3"
-                  Header="当前缓冲片段"
+                  Header="当前候选片段"
                   Padding="12"
                   Margin="0,16,0,0">
             <TextBox Text="{Binding CurrentBufferText, Mode=OneWay}"
@@ -126,7 +126,7 @@
             </Grid.ColumnDefinitions>
 
             <GroupBox Grid.Column="0"
-                      Header="已提交片段"
+                      Header="已提交片段 final segments"
                       Padding="12">
                 <ListBox x:Name="SubmittedSegmentsListBox"
                          ItemsSource="{Binding SubmittedSegments}"

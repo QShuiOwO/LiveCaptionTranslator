@@ -3,6 +3,7 @@
 # Visual Studio / Rider
 .vs/
 .idea/
+.vscode/
 *.suo
 *.user
 *.userosscache
@@ -29,6 +30,9 @@ logs/
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .venv/
 venv/
 env/
@@ -41,18 +45,29 @@ env/
 tools/nllb/models/
 tools/nllb/checkpoints/
 tools/nllb/cache/
+tools/nllb/**/cache/
+tools/nllb/**/.huggingface/
+tools/nllb/**/.hf/
 tools/nllb/*.bin
 tools/nllb/*.pt
 tools/nllb/*.pth
 tools/nllb/*.safetensors
 tools/nllb/*.onnx
+tools/nllb/*.onnx_data
 tools/nllb/*.spm
+tools/nllb/*.ckpt
+tools/nllb/*.npy
+tools/nllb/*.npz
 tools/nllb/**/*.bin
 tools/nllb/**/*.pt
 tools/nllb/**/*.pth
 tools/nllb/**/*.safetensors
 tools/nllb/**/*.onnx
+tools/nllb/**/*.onnx_data
 tools/nllb/**/*.spm
+tools/nllb/**/*.ckpt
+tools/nllb/**/*.npy
+tools/nllb/**/*.npz
 tools/nllb/**/.cache/
 !tools/nllb/**/.gitkeep
 !tools/nllb/**/*.json
@@ -67,3 +82,7 @@ appsettings.Local.json
 Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Temporary files
+*.tmp
+*.bak
