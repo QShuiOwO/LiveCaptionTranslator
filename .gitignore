@@ -9,6 +9,9 @@
 *.userosscache
 *.sln.docstates
 *.rsuser
+*.DotSettings.user
+*.ncrunch*
+*.VisualState.xml
 
 # .NET / WPF build output
 [Bb]in/
@@ -16,6 +19,11 @@
 publish/
 artifacts/
 TestResults/
+coverage/
+coverage*/
+*.coverage
+*.coveragexml
+*.trx
 *.nupkg
 *.snupkg
 *.pdb
@@ -33,6 +41,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
+.ipynb_checkpoints/
+.cache/
 .venv/
 venv/
 env/
@@ -58,6 +69,10 @@ tools/nllb/*.spm
 tools/nllb/*.ckpt
 tools/nllb/*.npy
 tools/nllb/*.npz
+tools/nllb/*.h5
+tools/nllb/*.pb
+tools/nllb/*.tflite
+tools/nllb/*.msgpack
 tools/nllb/**/*.bin
 tools/nllb/**/*.pt
 tools/nllb/**/*.pth
@@ -68,6 +83,13 @@ tools/nllb/**/*.spm
 tools/nllb/**/*.ckpt
 tools/nllb/**/*.npy
 tools/nllb/**/*.npz
+tools/nllb/**/*.h5
+tools/nllb/**/*.pb
+tools/nllb/**/*.tflite
+tools/nllb/**/*.msgpack
+tools/nllb/**/pytorch_model*
+tools/nllb/**/tf_model*
+tools/nllb/**/flax_model*
 tools/nllb/**/.cache/
 !tools/nllb/**/.gitkeep
 !tools/nllb/**/*.json
@@ -86,3 +108,6 @@ $RECYCLE.BIN/
 # Temporary files
 *.tmp
 *.bak
+*.orig
+*.rej
+*.patch

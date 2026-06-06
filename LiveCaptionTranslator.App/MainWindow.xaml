@@ -34,6 +34,12 @@
                            FontWeight="SemiBold" />
                 <TextBlock Text="{Binding TranslationStatus}" />
             </StackPanel>
+            <StackPanel Orientation="Horizontal"
+                        Margin="0,6,0,0">
+                <TextBlock Text="Overlay 状态："
+                           FontWeight="SemiBold" />
+                <TextBlock Text="{Binding OverlayStatus}" />
+            </StackPanel>
         </StackPanel>
 
         <WrapPanel Grid.Row="1"
@@ -87,7 +93,54 @@
             <Button Content="停止翻译 worker"
                     MinWidth="140"
                     Padding="12,8"
+                    Margin="0,0,12,0"
                     Click="StopTranslationWorkerButton_Click" />
+            <Button Content="显示 Overlay"
+                    MinWidth="120"
+                    Padding="12,8"
+                    Margin="0,0,12,0"
+                    Click="ShowOverlayButton_Click" />
+            <Button Content="隐藏 Overlay"
+                    MinWidth="120"
+                    Padding="12,8"
+                    Margin="0,0,12,0"
+                    Click="HideOverlayButton_Click" />
+            <CheckBox Content="锁定 Overlay"
+                      IsChecked="{Binding OverlayIsLocked, Mode=TwoWay}"
+                      VerticalAlignment="Center"
+                      Margin="8,0,12,0"
+                      Checked="OverlayLockedCheckBox_Changed"
+                      Unchecked="OverlayLockedCheckBox_Changed" />
+            <CheckBox Content="鼠标穿透"
+                      IsChecked="{Binding OverlayIsClickThrough, Mode=TwoWay}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,12,0"
+                      Checked="OverlayClickThroughCheckBox_Changed"
+                      Unchecked="OverlayClickThroughCheckBox_Changed" />
+            <CheckBox Content="显示原文"
+                      IsChecked="{Binding OverlayShowSourceText, Mode=TwoWay}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,12,0"
+                      Checked="OverlayShowSourceCheckBox_Changed"
+                      Unchecked="OverlayShowSourceCheckBox_Changed" />
+            <TextBlock Text="字号"
+                       VerticalAlignment="Center"
+                       Margin="8,0,8,0" />
+            <Slider Width="100"
+                    Minimum="16"
+                    Maximum="56"
+                    AutoToolTipPlacement="TopLeft"
+                    Value="{Binding OverlayFontSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    ValueChanged="OverlayFontSizeSlider_ValueChanged" />
+            <TextBlock Text="透明度"
+                       VerticalAlignment="Center"
+                       Margin="16,0,8,0" />
+            <Slider Width="100"
+                    Minimum="0.1"
+                    Maximum="0.9"
+                    AutoToolTipPlacement="TopLeft"
+                    Value="{Binding OverlayBackgroundOpacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    ValueChanged="OverlayOpacitySlider_ValueChanged" />
         </WrapPanel>
 
         <GroupBox Grid.Row="2"

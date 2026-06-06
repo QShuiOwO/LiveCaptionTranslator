@@ -8,12 +8,23 @@ namespace LiveCaptionTranslator.App.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private const int MaxLogLines = 300;
+    private const int MaxLogLineLength = 1200;
+    private const int MaxDisplayedSegments = 150;
+    private const int MaxDisplayedTranslationResults = 150;
+
     private string _liveCaptionsStatus = "未检测";
     private string _translationStatus = "翻译 worker 未启动";
     private string _originalSubtitleText = "等待读取 Live captions 原文字幕。";
     private string _currentBufferText = "等待稳定字幕片段。";
     private string _selectedSourceLanguage = "auto";
     private string _selectedTargetLanguage = "zho_Hans";
+    private string _overlayStatus = "Overlay 未显示";
+    private bool _overlayShowSourceText;
+    private bool _overlayIsLocked;
+    private bool _overlayIsClickThrough;
+    private double _overlayFontSize = 30;
+    private double _overlayBackgroundOpacity = 0.45;
     private string _logText = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -52,6 +63,42 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _selectedTargetLanguage;
         set => SetField(ref _selectedTargetLanguage, value);
+    }
+
+    public string OverlayStatus
+    {
+        get => _overlayStatus;
+        set => SetField(ref _overlayStatus, value);
+    }
+
+    public bool OverlayShowSourceText
+    {
+        get => _overlayShowSourceText;
+        set => SetField(ref _overlayShowSourceText, value);
+    }
+
+    public bool OverlayIsLocked
+    {
+        get => _overlayIsLocked;
+        set => SetField(ref _overlayIsLocked, value);
+    }
+
+    public bool OverlayIsClickThrough
+    {
+        get => _overlayIsClickThrough;
+        set => SetField(ref _overlayIsClickThrough, value);
+    }
+
+    public double OverlayFontSize
+    {
+        get => _overlayFontSize;
+        set => SetField(ref _overlayFontSize, value);
+    }
+
+    public double OverlayBackgroundOpacity
+    {
+        get => _overlayBackgroundOpacity;
+        set => SetField(ref _overlayBackgroundOpacity, value);
     }
 
     public ObservableCollection<string> SourceLanguages { get; } =
@@ -96,6 +143,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             SubmittedSegments.Add(segment);
         }
+
+        TrimCollection(SubmittedSegments, MaxDisplayedSegments);
     }
 
     public void ClearSubmittedSegments()
@@ -124,6 +173,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         TranslationResults.Add(result);
+        TrimCollection(TranslationResults, MaxDisplayedTranslationResults);
         return false;
     }
 
@@ -134,11 +184,35 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void AddLog(string message)
     {
-        var line = $"[{DateTime.Now:HH:mm:ss}] {message}";
+        var line = $"[{DateTime.Now:HH:mm:ss}] {TrimLogLine(message)}";
         Logs.Add(line);
-        LogText = string.IsNullOrEmpty(LogText)
-            ? line
-            : $"{LogText}{Environment.NewLine}{line}";
+
+        while (Logs.Count > MaxLogLines)
+        {
+            Logs.RemoveAt(0);
+        }
+
+        LogText = string.Join(Environment.NewLine, Logs);
+    }
+
+    private static string TrimLogLine(string message)
+    {
+        var normalized = message
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Replace("\n", "\\n", StringComparison.Ordinal);
+
+        return normalized.Length <= MaxLogLineLength
+            ? normalized
+            : $"{normalized[..MaxLogLineLength]}...";
+    }
+
+    private static void TrimCollection<T>(ObservableCollection<T> collection, int maxCount)
+    {
+        while (collection.Count > maxCount)
+        {
+            collection.RemoveAt(0);
+        }
     }
 
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

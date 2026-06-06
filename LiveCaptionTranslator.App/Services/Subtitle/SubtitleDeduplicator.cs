@@ -5,6 +5,8 @@ namespace LiveCaptionTranslator.App.Services.Subtitle;
 
 public sealed class SubtitleDeduplicator
 {
+    private const int MaxDecisionLogTextLength = 180;
+
     private static readonly char[] SentenceEndPunctuation =
     [
         '.',
@@ -445,9 +447,15 @@ public sealed class SubtitleDeduplicator
 
     private static string FormatLogText(string text)
     {
-        return string.IsNullOrWhiteSpace(text)
-            ? "<empty>"
-            : text.Replace("\n", "\\n", StringComparison.Ordinal);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "<empty>";
+        }
+
+        var normalized = text.Replace("\n", "\\n", StringComparison.Ordinal);
+        return normalized.Length <= MaxDecisionLogTextLength
+            ? normalized
+            : $"{normalized[..MaxDecisionLogTextLength]}...";
     }
 
     private static string NormalizeForComparison(string text)
